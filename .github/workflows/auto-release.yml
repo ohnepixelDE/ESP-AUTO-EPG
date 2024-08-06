@@ -1,0 +1,184 @@
+name: Create Guide XML and Release
+
+on:
+  schedule:
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name 'GitHub Actions'
+          git config user.email 'actions@github.com'
+          
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/iptv-org/epg.git
+
+      - name: Fetch upstream changes
+        run: git fetch upstream
+
+      - name: Merge upstream changes
+        run: |
+          git checkout master
+          git merge upstream/master
+
+      - name: Push changes
+        run: git push origin master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_xml:
+    runs-on: ubuntu-latest
+    needs: sync
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install requests
+
+    - name: Remove existing XML file
+      run: |
+        if [ -f updated_channels.xml ]; then
+          rm updated_channels.xml
+        fi
+
+    - name: Run Python script to generate XML
+      run: python generate_channels.py
+
+    - name: Check Git status
+      run: git status
+
+    - name: Add and commit XML file
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add updated_channels.xml
+        git status
+        git commit -m "Update updated_channels.xml" || echo "No changes to commit"
+        git push
+  
+  build:
+    runs-on: ubuntu-latest
+    needs: update_xml
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Setup MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64
+
+    - name: NPM install
+      run: npm install
+
+    - name: Generate guide.xml
+      run: npm run grab -- --channels=updated_channels.xml --maxConnections=20
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: binary
+        path: guide.xml
+
+    - name: Set release date
+      run: echo "RELEASE_DATE=$(date +%d-%m-%Y)" >> $GITHUB_ENV
+
+    - name: Delete Existing Release
+      id: delete_release
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const tag = "xml";
+    
+          // List all releases and find the release by tag
+          const releases = await github.rest.repos.listReleases({
+            owner: owner,
+            repo: repo,
+          });
+    
+          const release = releases.data.find(release => release.tag_name === tag);
+    
+          // Check if the release exists and delete it
+          if (release) {
+            await github.rest.repos.deleteRelease({
+              owner: owner,
+              repo: repo,
+              release_id: release.id,
+            });
+            console.log(`Deleted release with ID ${release.id}`);
+          } else {
+            console.log("No existing release to delete");
+          }
+    
+          // Delete the tag
+          try {
+            await github.rest.git.deleteRef({
+              owner: owner,
+              repo: repo,
+              ref: `tags/${tag}`,
+            });
+            console.log(`Deleted tag ${tag}`);
+          } catch (error) {
+            console.error(`Error deleting tag: ${error.message}`);
+          }
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: binary
+
+    - name: Echo build sha256
+      id: build_sha
+      run: |
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum guide.xml > sha256.checksum
+        elif command -v shasum >/dev/null 2>&1; then
+          shasum -a 256 guide.xml > sha256.checksum
+        else
+          echo "SHA256 checksum tool not found"
+          exit 1
+        fi
+        echo "build_sha=$(cat sha256.checksum)" >> $GITHUB_OUTPUT
+        cat sha256.checksum
+        
+    - name: Guide Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: TV Guide USA ${{ env.RELEASE_DATE }}
+        tag_name: xml
+        body: |
+          **This release has been built by Github Actions**
+          [Link to build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          Build SHA256:
+          ```
+          ${{ steps.build_sha.outputs.build_sha }}
+          ```
+          To verify the build SHA256 during the action, click the build link, go-to "Create Release", open the Echo build sha256 step and read the sha256.
+          You can download the build artifacts, generate a SHA256 checksum and compare it with the below binary.
+        files: guide.xml
