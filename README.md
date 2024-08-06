@@ -4,7 +4,10 @@ Here you can download EPG for US and UK channels collected from the site tvpassp
 
 # How to use?
 
-Add [link](https://github.com/boogabooga841/WORKING-AUTO-EPG/releases/download/xml/guide.xml) to your EPG source and enjoy. Fully compatible for channels taken from https://iptv-org.github.io/
+Add link to your EPG source and enjoy. Fully compatible for channels taken from https://iptv-org.github.io/
+```sh
+https://github.com/boogabooga841/WORKING-AUTO-EPG/releases/download/xml/guide.xml
+```
 
 # How often is the TV program updated?
 
