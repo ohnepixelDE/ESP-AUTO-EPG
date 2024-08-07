@@ -10,7 +10,7 @@ def filter_channels(input_file, output_file):
     for channel in root.findall('channel'):
         xmltv_id = channel.get('xmltv_id')
         
-        if xmltv_id and (xmltv_id.endswith('.es'):
+        if xmltv_id and (xmltv_id.endswith('.es')):
             filtered_root.append(channel)
     
     filtered_tree = ET.ElementTree(filtered_root)
