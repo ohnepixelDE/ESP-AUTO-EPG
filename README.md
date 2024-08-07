@@ -1,6 +1,6 @@
 # What is this???
 
-Here you can download EPG for US and UK channels collected from the site tvpassport.com
+Here you can download EPG for Spanish channels collected from the site movistarplus.es
 
 # How to use?
 
