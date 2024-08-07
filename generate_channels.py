@@ -10,13 +10,13 @@ def filter_channels(input_file, output_file):
     for channel in root.findall('channel'):
         xmltv_id = channel.get('xmltv_id')
         
-        if xmltv_id and (xmltv_id.endswith('.us') or xmltv_id.endswith('.uk') or xmltv_id.endswith('.ru') or xmltv_id.endswith('.ua')):
+        if xmltv_id and (xmltv_id.endswith('.es'):
             filtered_root.append(channel)
     
     filtered_tree = ET.ElementTree(filtered_root)
     filtered_tree.write(output_file, encoding='utf-8', xml_declaration=True)
 
-input_file = 'sites/tvpassport.com/tvpassport.com.channels.xml'
+input_file = 'sites/movistarplus.es/movistarplus.es.channels.xml'
 output_file = 'updated_channels.xml'
 
 filter_channels(input_file, output_file)
