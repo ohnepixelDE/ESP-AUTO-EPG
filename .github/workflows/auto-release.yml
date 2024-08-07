@@ -170,7 +170,7 @@ jobs:
     - name: Guide Release
       uses: softprops/action-gh-release@v1
       with:
-        name: TV Guide USA ${{ env.RELEASE_DATE }}
+        name: TV Guide ESP ${{ env.RELEASE_DATE }}
         tag_name: xml
         body: |
           **This release has been built by Github Actions**
